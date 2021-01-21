@@ -8,7 +8,6 @@ import json
 import izhiqunDB
 import pandas as pd
 
-
 id = 0
 date = ''
 title = ''
@@ -17,6 +16,7 @@ looked = 0
 followers = 0
 totals = 1 # 获取当下话题的总回答数
 rank = 1 # 小鹿回答的排名，初始化为第1名，每次爬取完一个时需要再次初始化
+is_stop = 0 # 当程序处于giao的中断时，用来保证排名不重新开始的变量
 
 final_data = [] # 最终数据
 comment = [] # 用来存放数据
@@ -43,6 +43,7 @@ def get_user_data(html_ans_json):
     global flag
     global comment
     global comments
+    global is_stop
     flag = 0
     comments = []
 
@@ -62,6 +63,7 @@ def get_user_data(html_ans_json):
         # comments.append(comment)
         print(comment_xiaolu[0], comment_xiaolu[1])
         if comment_xiaolu[0] == "you-wu-jun-77" or comment_xiaolu[1] == "小鹿" or rank > 99:  # 如果小鹿回答的排名掉出100名以外变直接返回rank=100
+            is_stop = 0
             flag = 1
             id = id + 1
 
@@ -94,6 +96,7 @@ def parse_ansajax(ans_json):
     global comment
     global comments
     global id
+    global is_stop
 
     print("=========哎呀，发现一条回答=========")
 
@@ -103,6 +106,8 @@ def parse_ansajax(ans_json):
     if isinstance(html_ans_json, str) != True:
         print("giao 这一条拒绝了我的访问1 giao")
 
+        is_stop = 1
+
         time.sleep(5) #网页不返回请求信息，就再请求一次，给出5秒的缓冲时间，请求太频繁了容易出现这样问题
         parse_ansajax(ans_json)
         return
@@ -111,18 +116,22 @@ def parse_ansajax(ans_json):
     totals = json.loads(html_ans_json)['paging']['totals']
     print(f"当下回答总数数量：{totals}")
 
-    rank = 1  # 重新初始化rank
+    if is_stop == 0:
+        rank = 1  # 重新初始化rank，如果程序在 giao1 / giao2 处中断了(is_stop != 0)，那么就不初始化，直到本条回答爬完
+
     ans_page = 0
 
     while (ans_page <= totals):  # 遍历某话题下的每一条回答(用来获取回答者信息)(第二层循环)
 
-        print("现在是多少页了：" + str(ans_page))
+        print("现在是多少页了：", ans_page)
         html_ans_json_next = get_data.get_data(ans_json)
 
         #######################用来判断处理网页不返回请求信息#######################
         if isinstance(html_ans_json_next, str) != True:
 
             print("giao 这一条拒绝了我的访问2 giao")
+
+            is_stop = 1
 
             time.sleep(5) #网页不返回请求信息，就再请求一次，给出5秒的缓冲时间，请求太频繁了容易出现这样问题
             parse_ansajax(ans_json)
